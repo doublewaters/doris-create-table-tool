@@ -1,6 +1,6 @@
 <template>
   <div>
-    <el-form :model="form" label-width="120px">
+    <el-form :model="form" label-width="140px">
       <el-form-item label="库名">
         <el-input v-model="form.databaseName" placeholder="请输入库名（可选）"></el-input>
       </el-form-item>
@@ -19,7 +19,7 @@
             <el-input v-model="scope.row.name" placeholder="列名"></el-input>
           </template>
         </el-table-column>
-        <el-table-column prop="type" label="数据类型" width="250">
+        <el-table-column prop="type" label="数据类型" width="150">
           <template slot-scope="scope">
             <el-select v-model="scope.row.type" placeholder="选择数据类型" @change="handleTypeChange(scope.row)">
               <el-option label="TINYINT" value="TINYINT"></el-option>
@@ -51,7 +51,7 @@
             <el-checkbox v-model="scope.row.key"></el-checkbox>
           </template>
         </el-table-column>
-        <el-table-column prop="aggrType" label="聚合类型" width="250">
+        <el-table-column prop="aggrType" label="聚合类型" width="150">
           <template slot-scope="scope">
             <el-select v-model="scope.row.aggrType" :disabled="shouldDisableAggrType(scope.row)" placeholder="选择聚合类型">
               <el-option label="SUM" value="SUM"></el-option>
@@ -128,11 +128,11 @@
       <template v-if="form.dynamicPartition.enable">
         <el-form-item label="时间单位">
           <el-select v-model="form.dynamicPartition.time_unit" placeholder="选择时间单位">
-            <el-option label="天" value="DAY"></el-option>
-          <el-option label="周" value="WEEK"></el-option>
-          <el-option label="月" value="MONTH"></el-option>
+            <el-option label="DAY" value="DAY"></el-option>
+          <el-option label="WEEK" value="WEEK"></el-option>
+          <el-option label="MONTH" value="MONTH"></el-option>
           <el-option label="年" value="YEAR"></el-option>
-          <el-option label="时" value="HOUR"></el-option>
+          <el-option label="YEAR" value="HOUR"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="向前删除分区数">
@@ -292,7 +292,7 @@ export default {
     beautifySQL(sql) {
       const keywords = [
         'CREATE TABLE', 'IF NOT EXISTS', 'ENGINE', 'COMMENT', 'PARTITION BY',
-        'DISTRIBUTED BY', 'HASH', 'BUCKETS', 'RANDOM', 'PROPERTIES'
+        'DISTRIBUTED BY', 'HASH', 'RANDOM', 'PROPERTIES'
       ];
       let formattedSQL = sql;
 
@@ -309,7 +309,7 @@ export default {
       formattedSQL = formattedSQL.replace(/PARTITION BY/g, '\nPARTITION BY');
       formattedSQL = formattedSQL.replace(/DISTRIBUTED BY/g, 'DISTRIBUTED BY');
       formattedSQL = formattedSQL.replace(/PROPERTIES \(/g, 'PROPERTIES (\n  ');
-      formattedSQL = formattedSQL.replace(/\) BUCKETS/g, ')BUCKETS');
+      formattedSQL = formattedSQL.replace(/\) BUCKETS/g, ') BUCKETS');
 
       return formattedSQL;
     },
@@ -349,7 +349,7 @@ export default {
         if ((column.type === 'CHAR' || column.type === 'VARCHAR') && column.length) {
           colDetails += `(${column.length})`;
         }
-        if (column.nullable) colDetails += ' NOT NULL';
+        
         if (column.defaultValue) colDetails += ` DEFAULT '${column.defaultValue}'`;
         if (column.comment) colDetails += ` COMMENT '${column.comment}'`;
         if (this.isAggregateKey && !column.key && !column.aggrType) {
@@ -357,6 +357,7 @@ export default {
           throw new Error('Non-key fields must have an aggregation type selected');
         }
         if (column.aggrType) colDetails += ` ${column.aggrType}`; // 添加聚合类型
+        if (column.nullable) colDetails += ' NOT NULL';
         return colDetails;
       }).join(', ');
 
