@@ -119,6 +119,85 @@
         <el-input v-model="form.buckets" placeholder="BUCKETS num || 'auto'" type="text" style="width: 200px;"></el-input>
       </el-form-item>
 
+       <!-- 动态分区开关 -->
+       <el-form-item label="启用动态分区">
+        <el-switch v-model="form.dynamicPartition.enable"></el-switch>
+      </el-form-item>
+
+      <!-- 以下配置仅在启用动态分区时显示 -->
+      <template v-if="form.dynamicPartition.enable">
+        <el-form-item label="时间单位">
+          <el-select v-model="form.dynamicPartition.time_unit" placeholder="选择时间单位">
+            <el-option label="天" value="DAY"></el-option>
+          <el-option label="周" value="WEEK"></el-option>
+          <el-option label="月" value="MONTH"></el-option>
+          <el-option label="年" value="YEAR"></el-option>
+          <el-option label="时" value="HOUR"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="向前删除分区数">
+          <el-input v-model.number="form.dynamicPartition.start" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="提前创建分区数">
+          <el-input v-model.number="form.dynamicPartition.end" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="分区名前缀">
+          <el-input v-model="form.dynamicPartition.prefix" placeholder="请输入分区前缀"></el-input>
+        </el-form-item>
+        <el-form-item label="分区分桶数量" v-if="form.dynamicPartition.enable">
+        <el-input v-model.number="form.dynamicPartition.buckets" type="number"></el-input>
+      </el-form-item>
+        <el-form-item label="创建历史分区" v-if="form.dynamicPartition.enable">
+          <el-switch v-model="form.dynamicPartition.create_history_partition"></el-switch>
+        </el-form-item>
+        <el-form-item label="历史分区数量" v-if="form.dynamicPartition.create_history_partition">
+          <el-input v-model.number="form.dynamicPartition.history_partition_num" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="保留历史分区时间段" v-if="form.dynamicPartition.create_history_partition">
+          <el-input v-model="form.dynamicPartition.reserved_history_periods"></el-input>
+        </el-form-item>
+        <!-- 其他配置项 -->
+      </template>
+
+      <el-form-item label="副本数配置">
+        <el-input v-model="form.replicationAllocation" placeholder="请输入副本数配置" type="number"></el-input>
+      </el-form-item>
+
+      <!-- 动态分区配置
+      <el-form-item label="启用动态分区">
+        <el-switch v-model="form.dynamicPartition.enable"></el-switch>
+      </el-form-item>
+      <el-form-item label="时间单位" v-if="form.dynamicPartition.enable">
+        <el-select v-model="form.dynamicPartition.time_unit" placeholder="选择时间单位">
+          <el-option label="天" value="DAY"></el-option>
+          <el-option label="周" value="WEEK"></el-option>
+          <el-option label="月" value="MONTH"></el-option>
+          <el-option label="年" value="YEAR"></el-option>
+          <el-option label="时" value="HOUR"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="向前删除分区数" v-if="form.dynamicPartition.enable">
+        <el-input v-model.number="form.dynamicPartition.start" type="number"></el-input>
+      </el-form-item>
+      <el-form-item label="提前创建分区数" v-if="form.dynamicPartition.enable">
+        <el-input v-model.number="form.dynamicPartition.end" type="number"></el-input>
+      </el-form-item>
+      <el-form-item label="分区名前缀" v-if="form.dynamicPartition.enable">
+        <el-input v-model="form.dynamicPartition.prefix"></el-input>
+      </el-form-item>
+      <el-form-item label="分区分桶数量" v-if="form.dynamicPartition.enable">
+        <el-input v-model.number="form.dynamicPartition.buckets" type="number"></el-input>
+      </el-form-item>
+      <el-form-item label="创建历史分区" v-if="form.dynamicPartition.enable">
+        <el-switch v-model="form.dynamicPartition.create_history_partition"></el-switch>
+      </el-form-item>
+      <el-form-item label="历史分区数量" v-if="form.dynamicPartition.create_history_partition">
+        <el-input v-model.number="form.dynamicPartition.history_partition_num" type="number"></el-input>
+      </el-form-item>
+      <el-form-item label="保留历史分区时间段" v-if="form.dynamicPartition.create_history_partition">
+        <el-input v-model="form.dynamicPartition.reserved_history_periods"></el-input>
+      </el-form-item> -->
+
       <el-form-item>
         <el-button type="primary" @click="generateSQL">生成 SQL</el-button>
       </el-form-item>
@@ -146,6 +225,18 @@ export default {
         buckets: '',
         engineType: '',
         tableComment: '',
+        replicationAllocation: 3,
+        dynamicPartition: {
+          enable: false,
+          time_unit: '',
+          start: -2147483648,
+          end: 1,  // 必须为正数，默认设置一个示例值
+          prefix: '',  // 必须提供值
+          buckets: '',
+          create_history_partition: false,
+          history_partition_num: -1,
+          reserved_history_periods: 'NULL'
+        },
         partitionInfo: '',
         properties: '',
         extraProperties: ''
@@ -217,12 +308,13 @@ export default {
       formattedSQL = formattedSQL.replace(/\) COMMENT/g, ')\nCOMMENT');
       formattedSQL = formattedSQL.replace(/PARTITION BY/g, '\nPARTITION BY');
       formattedSQL = formattedSQL.replace(/DISTRIBUTED BY/g, 'DISTRIBUTED BY');
-      formattedSQL = formattedSQL.replace(/PROPERTIES \(/g, '\nPROPERTIES (\n  ');
+      formattedSQL = formattedSQL.replace(/PROPERTIES \(/g, 'PROPERTIES (\n  ');
       formattedSQL = formattedSQL.replace(/\) BUCKETS/g, ')BUCKETS');
 
       return formattedSQL;
     },
     generateSQL() {
+      
       if (!this.form.tableName || this.form.columns.length === 0) {
         this.$message.error('请填写表名并添加至少一列');
         return;
@@ -317,8 +409,31 @@ export default {
 
       let engineSQL = this.form.engineType ? `ENGINE = ${this.form.engineType}` : '';
       let commentSQL = this.form.tableComment ? `COMMENT '${this.form.tableComment}'` : '';
+      
       let partitionSQL = this.form.partitionInfo ? `PARTITION BY ${this.form.partitionInfo}` : '';
-      let propertiesSQL = this.form.properties ? `${this.form.properties}` : '';
+
+      let properties = [
+      `'replication_allocation' = 'tag.location.default:${this.form.replicationAllocation}'` // 添加副本数配置到 PROPERTIES
+    ];
+      
+      if (this.form.dynamicPartition.enable) {
+        properties.push(`'dynamic_partition.enable' = 'true'`);
+        properties.push(`'dynamic_partition.time_unit' = '${this.form.dynamicPartition.time_unit}'`);
+        properties.push(`'dynamic_partition.start' = '${this.form.dynamicPartition.start}'`);
+        properties.push(`'dynamic_partition.end' = '${this.form.dynamicPartition.end}'`);
+        properties.push(`'dynamic_partition.prefix' = '${this.form.dynamicPartition.prefix}'`);
+        properties.push(`'dynamic_partition.buckets' = ${this.form.dynamicPartition.buckets}`);
+        if (this.form.dynamicPartition.create_history_partition) {
+          properties.push(`'dynamic_partition.create_history_partition' = 'true'`);
+          properties.push(`'dynamic_partition.history_partition_num' = ${this.form.dynamicPartition.history_partition_num}`);
+          properties.push(`'dynamic_partition.reserved_history_periods' = '${this.form.dynamicPartition.reserved_history_periods}'`);
+        }
+      }
+   
+
+      let propertiesSQL = properties.join(",\n  ");
+
+      console.log(propertiesSQL);
       let extraPropertiesSQL = this.form.extraProperties ? `${this.form.extraProperties}` : '';
 
       // 使用生成的 SQL
